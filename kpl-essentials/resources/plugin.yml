@@ -1,0 +1,7 @@
+api-version: "1.15"
+name: KPLEssentials
+author: Ricky12Awesome
+main: me.ricky.kpl.KPLEssentials
+version: ${version}
+
+depend: [KPLCore]

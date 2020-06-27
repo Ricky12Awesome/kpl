@@ -1,0 +1,7 @@
+api-version: "1.15"
+name: KPLCore
+author: Ricky12Awesome
+main: me.ricky.kpl.KPLCore
+version: ${version}
+
+depend: [PlaceholderAPI, Vault]
