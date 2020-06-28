@@ -98,3 +98,5 @@ class CommandManager(private val plugin: Plugin) {
   }
 
 }
+
+inline fun <reified T> CommandContext<*>.getArgument(name: String): T = getArgument(name, T::class.java)

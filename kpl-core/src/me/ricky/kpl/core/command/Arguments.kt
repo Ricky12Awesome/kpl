@@ -8,23 +8,30 @@ import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import org.bukkit.command.CommandSender
 import java.util.concurrent.CompletableFuture
 
-class DynamicArgument<S : CommandSender>(
-  type: StringArgumentType = StringArgumentType.word(),
-  private val creator: CommodoreContextCreator<S>,
-  private val list: CommandContext<S>.() -> List<String>
-) : ArgumentType<String> by type {
+interface CustomArgumentType<T> {
+  val type: ArgumentType<T>
 
-  @Suppress("UNCHECKED_CAST")
-  override fun <S : Any> listSuggestions(
-    context: CommandContext<S>,
+  fun listSuggestions(
+    context: CommandContext<Any>,
+    builder: SuggestionsBuilder
+  ): CompletableFuture<Suggestions>
+}
+
+class DynamicArgumentType<S : CommandSender>(
+  private val creator: CommodoreContextCreator<S>,
+  private val list: CommandContext<S>.() -> Iterable<String>,
+  override val type: StringArgumentType = StringArgumentType.word()
+) : CustomArgumentType<String> {
+  override fun listSuggestions(
+    context: CommandContext<Any>,
     builder: SuggestionsBuilder
   ): CompletableFuture<Suggestions> {
-    creator.handle(context as CommandContext<Any>) {
+    creator.handle(context) {
       list(this).forEach {
         builder.suggest(it)
       }
     }
-    
+
     return builder.buildFuture()
   }
 }

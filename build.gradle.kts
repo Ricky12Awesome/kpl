@@ -38,7 +38,7 @@ subprojects {
     shadowJar {
       val version = if (project.version == "unspecified") rootProject.version else project.version
 
-      configurations = configurations + listOf(project.configurations["shadow"])
+      configurations = listOf(project.configurations["shadow"])
       archiveFileName.set("${project.name}-${version}.jar")
       destinationDirectory.set(rootProject.file("./server/plugins/"))
     }

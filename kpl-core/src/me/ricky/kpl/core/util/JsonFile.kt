@@ -18,6 +18,7 @@ class JsonFile<T>(
   }
 
   fun write(data: T) {
+    path.createIfNotExists()
     Files.newBufferedWriter(path).use {
       it.write(json.stringify(serializer, data))
     }

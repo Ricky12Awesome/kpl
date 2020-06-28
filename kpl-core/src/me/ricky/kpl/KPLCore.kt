@@ -4,9 +4,6 @@ import com.mojang.brigadier.arguments.IntegerArgumentType
 import me.ricky.kpl.core.command.CommandManager
 import me.ricky.kpl.core.command.PlayerContextCreator
 import me.ricky.kpl.core.command.command
-import me.ricky.kpl.core.item.*
-import me.ricky.kpl.core.util.sendColoredMessage
-import org.bukkit.Material
 import org.bukkit.plugin.java.JavaPlugin
 
 class KPLCore : JavaPlugin() {
@@ -18,14 +15,10 @@ class KPLCore : JavaPlugin() {
     manager.command("test", PlayerContextCreator) {
       argument("a", IntegerArgumentType.integer())
       argument("b", IntegerArgumentType.integer())
-      onArgument("c", IntegerArgumentType.integer()) {
-      }
-      argument("d", IntegerArgumentType.integer())
-      argument("e", IntegerArgumentType.integer())
+      argument("c", IntegerArgumentType.integer())
 
       executes {
-
-        source.sendColoredMessage("&eHmm")
+        source.sendMessage(input)
       }
     }
   }

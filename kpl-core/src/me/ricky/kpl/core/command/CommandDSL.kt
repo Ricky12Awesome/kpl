@@ -1,6 +1,7 @@
 package me.ricky.kpl.core.command
 
 import com.mojang.brigadier.arguments.ArgumentType
+import com.mojang.brigadier.arguments.StringArgumentType
 import com.mojang.brigadier.builder.ArgumentBuilder
 import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
@@ -19,13 +20,43 @@ class CommandDSL<S : CommandSender>(
     arguments += RequiredArgumentBuilder.argument<Any, T>(name, type)
   }
 
-  fun dynamicArgument(name: String) {
+  fun <T> argument(name: String, type: CustomArgumentType<T>) {
+    arguments += RequiredArgumentBuilder
+      .argument<Any, T>(name, type.type)
+      .suggests { ctx, builder ->
+        type.listSuggestions(ctx, builder)
+      }
+  }
 
+  fun dynamicArgument(
+    name: String,
+    type: StringArgumentType = StringArgumentType.word(),
+    list: CommandContext<S>.() -> Iterable<String>
+  ) {
+    argument(name, DynamicArgumentType(creator, list, type))
+  }
+
+  fun onDynamicArgument(
+    name: String,
+    type: StringArgumentType = StringArgumentType.word(),
+    list: CommandContext<S>.() -> Iterable<String>,
+    executor: CommandContext<S>.() -> Unit
+  ) {
+    onArgument(name, DynamicArgumentType(creator, list, type), executor)
   }
 
   fun <T> onArgument(name: String, type: ArgumentType<T>, executor: CommandContext<S>.() -> Unit) {
     arguments += RequiredArgumentBuilder
       .argument<Any, T>(name, type)
+      .executes(creator create executor)
+  }
+
+  fun <T> onArgument(name: String, type: CustomArgumentType<T>, executor: CommandContext<S>.() -> Unit) {
+    arguments += RequiredArgumentBuilder
+      .argument<Any, T>(name, type.type)
+      .suggests { ctx, builder ->
+        type.listSuggestions(ctx, builder)
+      }
       .executes(creator create executor)
   }
 
@@ -38,18 +69,24 @@ class CommandDSL<S : CommandSender>(
   }
 
   fun build(): LiteralArgumentBuilder<Any> {
-    with(arguments.lastOrNull() ?: builder) {
+    val required = arguments.filter { it is RequiredArgumentBuilder<*, *> }
+    val literal = arguments.filter { it is LiteralArgumentBuilder<*> }
+
+    with(required.lastOrNull() ?: builder) {
       executes(creator create executor)
     }
 
-    for (i in arguments.lastIndex - 1 downTo 0) {
-      arguments[i].then(arguments[i + 1])
+    for (i in required.lastIndex - 1 downTo 0) {
+      required[i].then(required[i + 1])
     }
 
-    arguments.firstOrNull()?.let {
+    required.firstOrNull()?.let {
       builder.then(it)
     }
 
+    literal.forEach {
+      builder.then(it)
+    }
     return builder
   }
 }
