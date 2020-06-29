@@ -1,0 +1,7 @@
+api-version: "1.15"
+name: KPLEnchants
+author: Ricky12Awesome
+main: me.ricky.kpl.KPLEnchants
+version: ${version}
+
+depend: [KPLCore]

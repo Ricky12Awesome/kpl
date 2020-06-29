@@ -1,3 +1,3 @@
 rootProject.name = "kpl"
 
-include("kpl-core", "kpl-essentials", "kpl-enchants")
+include("kpl-core", "kpl-essentials", "kpl-enchants", "kpl-kits")

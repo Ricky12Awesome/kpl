@@ -1,0 +1,7 @@
+api-version: "1.15"
+name: KPLKits
+author: Ricky12Awesome
+main: me.ricky.kpl.KPLKits
+version: ${version}
+
+depend: [KPLCore]

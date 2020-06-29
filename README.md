@@ -32,3 +32,9 @@ Custom Enchants that will work with `Item DSL`
 
 #### Dependency
 soon.
+
+#### KPL Kits
+Kits, will support custom items
+
+#### Dependency
+soon.
