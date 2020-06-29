@@ -87,6 +87,7 @@ class CommandDSL<S : CommandSender>(
     literal.forEach {
       builder.then(it)
     }
+
     return builder
   }
 }

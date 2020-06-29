@@ -3,11 +3,9 @@ package me.ricky.kpl.core.command
 import arrow.core.Either
 import arrow.core.left
 import arrow.core.right
-import com.mojang.brigadier.Command
 import com.mojang.brigadier.LiteralMessage
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
-import com.mojang.brigadier.suggestion.SuggestionsBuilder
 import me.lucko.commodore.Commodore
 import me.lucko.commodore.CommodoreProvider
 import me.ricky.kpl.core.util.ErrorMessage
@@ -69,7 +67,7 @@ data class CommodoreContextCreator<S : CommandSender>(
     }
   }
 
-  infix fun create(execute: CommandContext<S>.() -> Unit): Command<Any> = Command {
+  infix fun create(execute: CommandContext<S>.() -> Unit): MinecraftCommand<Any> = MinecraftCommand {
     when (val response = create(it)) {
       is Either.Left -> execute(response.a)
       is Either.Right -> response.b.sendTo(senderOf(it))
