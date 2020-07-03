@@ -43,9 +43,7 @@ fun NBTCompound.toJson(key: String): JsonElement {
 
       if (list != null) JsonArray(list) else JsonNull
     }
-    else -> {
-      error("I Don't know how we got here, but the error happened for $key")
-    }
+    else -> JsonNull
   }
 }
 

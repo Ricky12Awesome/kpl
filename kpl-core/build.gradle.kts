@@ -24,7 +24,7 @@ dependencies {
   }
 
   api("me.clip:placeholderapi:2.10.6")
-  //api("io.github.jorelali:commandapi:2.3")
+  //api("dev.jorelali:commandapi:3.0")
   api("com.github.MilkBowl:VaultAPI:1.7") {
     exclude("org.bukkit", "bukkit")
   }
@@ -32,10 +32,19 @@ dependencies {
   api("com.mojang:brigadier:1.0.17")
 
   // Other
-  shadowApi("io.arrow-kt:arrow-core:0.10.5-SNAPSHOT")
+  shadowApi("org.litote.kmongo:kmongo-coroutine:4.0.2") {
+    exclude("org.litote.kmongo", "kmongo-jackson-mapping")
+  }
+
+  shadowApi("org.litote.kmongo:kmongo-serialization-mapping:4.0.2")
+
+//  shadowApi("io.arrow-kt:arrow-core:0.10.5-SNAPSHOT") // Don't really need this if I only use Either
 }
 
-tasks.shadowJar {
-  relocate("de.tr7zw.changeme.nbtapi", "de.tr7zw.changeme.nbtapi.kpl")
-  relocate("me.lucko.commodore", "me.lucko.commodore.kpl")
+rootProject.allprojects {
+  tasks.shadowJar {
+    relocate("de.tr7zw.changeme.nbtapi", "de.tr7zw.changeme.nbtapi.kpl")
+    relocate("me.lucko.commodore", "me.lucko.commodore.kpl")
+  }
 }
+

@@ -10,6 +10,7 @@
 * Serialization of things
 
 #### Planned Features
+* MongoDB
 * GUI DSL
 * Shop
 * Custom Items
@@ -33,7 +34,7 @@ Custom Enchants that will work with `Item DSL`
 #### Dependency
 soon.
 
-#### KPL Kits
+### KPL Kits
 Kits, will support custom items
 
 #### Dependency

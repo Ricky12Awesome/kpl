@@ -1,21 +1,15 @@
 package me.ricky.kpl
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
 import com.mojang.brigadier.arguments.StringArgumentType
 import kotlinx.serialization.Serializable
+import me.ricky.kpl.core.KPlugin
 import me.ricky.kpl.core.command.CommandManager
 import me.ricky.kpl.core.command.PlayerContextCreator
 import me.ricky.kpl.core.command.command
 import me.ricky.kpl.core.command.getArgument
 import me.ricky.kpl.core.serializable.ItemStackSerializer
-import me.ricky.kpl.core.util.ErrorMessage
-import me.ricky.kpl.core.util.JsonFile
-import me.ricky.kpl.core.util.createIfNotExists
-import me.ricky.kpl.core.util.sendColoredMessage
+import me.ricky.kpl.core.util.*
 import org.bukkit.inventory.ItemStack
-import org.bukkit.plugin.java.JavaPlugin
 import java.nio.file.Files
 import kotlin.streams.asSequence
 
@@ -25,15 +19,13 @@ data class Kit(
   val cooldown: Double = 0.0
 )
 
-class KPLKits : JavaPlugin() {
+class KPLKits : KPlugin() {
   private val kitDirectory = dataFolder.resolve("kits/").toPath()
-  private val commandManager = CommandManager(this)
+  private val commandManager = managerOf(::CommandManager)
 
   private var kits: Map<String, JsonFile<Kit>> = mapOf()
 
-  override fun onEnable() {
-    commandManager.enable()
-
+  override fun enable() {
     kitDirectory.createIfNotExists(true)
 
     server.scheduler.scheduleSyncRepeatingTask(this, {
@@ -59,12 +51,12 @@ class KPLKits : JavaPlugin() {
 
           when (response) {
             is Either.Left -> {
-              val kit= response.a.read()
+              val kit= response.value.read()
 
               source.inventory.addItem(*kit.items.toTypedArray())
               source.sendColoredMessage("&aYou've received &e$key")
             }
-            is Either.Right -> response.b.sendTo(source)
+            is Either.Right -> response.value.sendTo(source)
           }
         }
       }

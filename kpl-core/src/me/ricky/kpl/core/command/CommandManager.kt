@@ -1,14 +1,12 @@
 package me.ricky.kpl.core.command
 
-import arrow.core.Either
-import arrow.core.left
-import arrow.core.right
 import com.mojang.brigadier.LiteralMessage
 import com.mojang.brigadier.context.CommandContext
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
 import me.lucko.commodore.Commodore
 import me.lucko.commodore.CommodoreProvider
-import me.ricky.kpl.core.util.ErrorMessage
+import me.ricky.kpl.core.KPlugin
+import me.ricky.kpl.core.util.*
 import org.bukkit.command.CommandSender
 import org.bukkit.command.ConsoleCommandSender
 import org.bukkit.entity.Player
@@ -62,33 +60,33 @@ data class CommodoreContextCreator<S : CommandSender>(
 
   inline fun handle(context: CommandContext<Any>, execute: CommandContext<S>.() -> Unit) {
     when (val response = create(context)) {
-      is Either.Left -> execute(response.a)
-      is Either.Right -> throw SimpleCommandExceptionType(LiteralMessage(response.b.colored)).create()
+      is Either.Left -> execute(response.value)
+      is Either.Right -> throw SimpleCommandExceptionType(LiteralMessage(response.value.colored)).create()
     }
   }
 
   infix fun create(execute: CommandContext<S>.() -> Unit): MinecraftCommand<Any> = MinecraftCommand {
     when (val response = create(it)) {
-      is Either.Left -> execute(response.a)
-      is Either.Right -> response.b.sendTo(senderOf(it))
+      is Either.Left -> execute(response.value)
+      is Either.Right -> response.value.sendTo(senderOf(it))
     }
 
     0
   }
 }
 
-class CommandManager(private val plugin: Plugin) {
+class CommandManager : Manager {
   private lateinit var commodore: Commodore
 
   fun <S : CommandSender> create(creator: ContextCreator<S>) = CommodoreContextCreator(commodore, creator)
 
-  fun enable() {
+  override fun enable(source: KPlugin) {
     if (!CommodoreProvider.isSupported()) {
-      plugin.logger.severe("Server must be 1.13 or higher to use this plugin.")
-      return plugin.pluginLoader.disablePlugin(plugin)
+      source.logger.severe("Server must be 1.13 or higher to use this plugin.")
+      return source.pluginLoader.disablePlugin(source)
     }
 
-    commodore = CommodoreProvider.getCommodore(plugin)
+    commodore = CommodoreProvider.getCommodore(source)
   }
 
   fun register(command: MinecraftCommandNode<Any>) {
