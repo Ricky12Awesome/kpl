@@ -1,62 +1,72 @@
 package me.ricky.kpl
 
-import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent
+import com.mojang.brigadier.arguments.IntegerArgumentType
 import me.ricky.kpl.core.KPlugin
-import me.ricky.kpl.core.command.CommandManager
-import me.ricky.kpl.core.command.PlayerContextCreator
-import me.ricky.kpl.core.command.command
-import me.ricky.kpl.core.item.Enchantments
-import me.ricky.kpl.core.item.enchants
+import me.ricky.kpl.core.command.*
 import me.ricky.kpl.core.item.item
 import me.ricky.kpl.core.util.managerOf
-import me.ricky.kpl.enchants.CustomEnchant
-import me.ricky.kpl.enchants.CustomEnchantDelegate
-import me.ricky.kpl.enchants.CustomEnchantManager
-import me.ricky.kpl.enchants.ifHasEnchantFor
+import me.ricky.kpl.enchants.*
 import org.bukkit.enchantments.EnchantmentTarget
-import org.bukkit.event.EventHandler
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 
-class SpeedEnchant : CustomEnchant {
-  override val id: String = "speed"
-  override val levelRange: IntRange = 1..5
-  override val target: EnchantmentTarget = EnchantmentTarget.ARMOR_FEET
-
-  @EventHandler
-  fun PlayerArmorChangeEvent.onChange() {
-    ifHasEnchantFor(oldItem) {
-      player.removePotionEffect(PotionEffectType.SPEED)
-    }
-
-    if (newItem == null) {
-      println("Test")
-    }
-
-    ifHasEnchantFor(newItem) {
-      player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, 99999999, it - 1, false, false))
-    }
-  }
-}
-
-var Enchantments.speed by CustomEnchantDelegate("speed")
-
 class KPLEnchants : KPlugin() {
-  val enchants = managerOf(::CustomEnchantManager)
+  val enchants = managerOf(::CEManager)
   val commands = managerOf(::CommandManager)
 
   override fun init() {
-    enchants += SpeedEnchant()
+    CEManager.addEnchant("life", "Life", 1..5, EnchantTarget.armor) {
+      onArmorChange {
+        onActivation {
+          player.addPotionEffect(PotionEffect(PotionEffectType.HEALTH_BOOST, Int.MAX_VALUE, it - 1, false, false))
+        }
+
+        onDeactivation {
+          player.removePotionEffect(PotionEffectType.HEALTH_BOOST)
+        }
+      }
+    }
+
+    CEManager.addEnchant("force_field", "Force Field", 1..2, EnchantTarget.chestplate) {
+      onArmorChange {
+        onActivation {
+          player.addPotionEffect(PotionEffect(PotionEffectType.DAMAGE_RESISTANCE, Int.MAX_VALUE, it - 1, false, false))
+        }
+
+        onDeactivation {
+          player.removePotionEffect(PotionEffectType.DAMAGE_RESISTANCE)
+        }
+      }
+    }
+
+    CEManager.addEnchant("speed", "Speed", 1..5, EnchantTarget.boots) {
+      onArmorChange {
+        onActivation {
+          player.addPotionEffect(PotionEffect(PotionEffectType.SPEED, Int.MAX_VALUE, it - 1, false, false))
+        }
+
+        onDeactivation {
+          player.removePotionEffect(PotionEffectType.SPEED)
+        }
+      }
+    }
   }
 
   override fun enable() {
     commands.command("ce", PlayerContextCreator) {
+      dynamicArgument("enchant") { CEManager.enchants.keys }
+      argument("level", IntegerArgumentType.integer())
+
       executes {
-        source.inventory.setItemInMainHand(item(source.inventory.itemInMainHand) {
-          enchants {
-            speed = 3
-          }
-        })
+        val enchant: String by argument()
+        val level: Int by argument()
+
+        val main = source.inventory.itemInMainHand
+        val item = item(main) {
+          addCustomEnchant(enchant, level)
+        }
+
+        source.inventory.setItemInMainHand(item)
       }
     }
   }

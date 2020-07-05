@@ -1,7 +1,13 @@
 package me.ricky.kpl.core.util
 
 import me.ricky.kpl.core.KPlugin
+import org.bukkit.event.Event
+import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
+import org.bukkit.plugin.EventExecutor
+import org.bukkit.plugin.Plugin
+import kotlin.reflect.KClass
+import kotlin.reflect.full.cast
 
 interface Manager {
   fun enable(source: KPlugin) {}
@@ -10,7 +16,7 @@ interface Manager {
 
 interface ManagerListener : Manager, Listener
 
-inline val KPlugin.pluginManager inline get() = server.pluginManager
+inline val Plugin.pluginManager inline get() = server.pluginManager
 
 fun KPlugin.addListener(listener: Listener) {
   pluginManager.registerEvents(listener, this)
@@ -56,7 +62,6 @@ fun <T> KPlugin.managerListenerOf(managerListener: T): T
 
   return managerListener
 }
-
 
 fun <T> KPlugin.managerListenerOf(construct: () -> T): T
     where T : Manager,

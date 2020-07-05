@@ -7,6 +7,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder
 import com.mojang.brigadier.builder.RequiredArgumentBuilder
 import com.mojang.brigadier.context.CommandContext
 import org.bukkit.command.CommandSender
+import kotlin.reflect.KProperty
 
 class CommandDSL<S : CommandSender>(
   private val name: String,
@@ -100,4 +101,13 @@ inline fun <S : CommandSender> CommandManager.command(
   val command = CommandDSL(name, create(creator)).apply(dsl)
 
   register(command.build().build())
+}
+
+inline fun <reified T> CommandContext<*>.getArgument(name: String): T = getArgument(name, T::class.java)
+inline fun <reified T> CommandContext<*>.argument(): ArgumentDelegate<T> = ArgumentDelegate(this, T::class.java)
+
+class ArgumentDelegate<T>(val context: CommandContext<*>, val type: Class<T>) {
+  operator fun getValue(ignore: Any?, property: KProperty<*>): T {
+    return context.getArgument(property.name, type)
+  }
 }
