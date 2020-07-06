@@ -46,7 +46,13 @@ subprojects {
     compileKotlin {
       kotlinOptions {
         jvmTarget = "1.8"
-        freeCompilerArgs = freeCompilerArgs + listOf("-XXLanguage:+InlineClasses", "-Xopt-in=kotlin.RequiresOptIn")
+        freeCompilerArgs = listOf(
+          "-Xinline-classes",
+          "-Xopt-in=kotlin.RequiresOptIn",
+          "-Xopt-in=kotlin.ExperimentalUnsignedTypes",
+          "-Xopt-in=kotlin.time.ExperimentalTime",
+          "-Xopt-in=kotlin.ExperimentalStdlibApi"
+        )
       }
     }
 

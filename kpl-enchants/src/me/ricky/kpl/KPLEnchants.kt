@@ -1,12 +1,12 @@
 package me.ricky.kpl
 
-import com.mojang.brigadier.arguments.IntegerArgumentType
 import me.ricky.kpl.core.KPlugin
-import me.ricky.kpl.core.command.*
-import me.ricky.kpl.core.item.item
+import me.ricky.kpl.core.command.CommandManager
 import me.ricky.kpl.core.util.managerOf
-import me.ricky.kpl.enchants.*
-import org.bukkit.enchantments.EnchantmentTarget
+import me.ricky.kpl.enchants.CEManager
+import me.ricky.kpl.enchants.EnchantTarget
+import me.ricky.kpl.enchants.addEnchant
+import me.ricky.kpl.enchants.onArmorChange
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 
@@ -53,22 +53,7 @@ class KPLEnchants : KPlugin() {
   }
 
   override fun enable() {
-    commands.command("ce", PlayerContextCreator) {
-      dynamicArgument("enchant") { CEManager.enchants.keys }
-      argument("level", IntegerArgumentType.integer())
 
-      executes {
-        val enchant: String by argument()
-        val level: Int by argument()
-
-        val main = source.inventory.itemInMainHand
-        val item = item(main) {
-          addCustomEnchant(enchant, level)
-        }
-
-        source.inventory.setItemInMainHand(item)
-      }
-    }
   }
 
 }

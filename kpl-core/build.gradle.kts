@@ -19,9 +19,9 @@ dependencies {
   api("com.destroystokyo.paper", "paper-api", "1.15.2-R0.1-SNAPSHOT")
 
   shadowApi("de.tr7zw:item-nbt-api:2.3.1")
-  shadowApi("me.lucko:commodore:1.8") {
-    exclude("com.mojang", "brigadier")
-  }
+//  shadowApi("me.lucko:commodore:1.8") {
+//    exclude("com.mojang", "brigadier")
+//  }
 
   api("me.clip:placeholderapi:2.10.6")
   api("dev.jorel:commandapi-core:3.2") {

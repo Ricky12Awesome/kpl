@@ -1,113 +1,56 @@
 package me.ricky.kpl.core.command
 
-import com.mojang.brigadier.arguments.ArgumentType
-import com.mojang.brigadier.arguments.StringArgumentType
-import com.mojang.brigadier.builder.ArgumentBuilder
-import com.mojang.brigadier.builder.LiteralArgumentBuilder
-import com.mojang.brigadier.builder.RequiredArgumentBuilder
-import com.mojang.brigadier.context.CommandContext
+import dev.jorel.commandapi.CommandPermission
+import dev.jorel.commandapi.arguments.Argument
+import dev.jorel.commandapi.executors.CommandExecutor
+import dev.jorel.commandapi.executors.IExecutorNormal
+import org.bukkit.command.BlockCommandSender
 import org.bukkit.command.CommandSender
-import kotlin.reflect.KProperty
+import org.bukkit.command.ConsoleCommandSender
+import org.bukkit.command.ProxiedCommandSender
+import org.bukkit.entity.Entity
+import org.bukkit.entity.Player
 
-class CommandDSL<S : CommandSender>(
-  private val name: String,
-  private val creator: CommodoreContextCreator<S>
-) {
-  private val builder = LiteralArgumentBuilder.literal<Any>(name)
-  private var executor: CommandContext<S>.() -> Unit = {}
-  val arguments = mutableListOf<ArgumentBuilder<Any, *>>()
+class CommandDSL(override val name: String) : Command {
+  inline val asCommand inline get() = this as Command
 
-  fun <T> argument(name: String, type: ArgumentType<T>) {
-    arguments += RequiredArgumentBuilder.argument<Any, T>(name, type)
+  override val aliases: MutableList<String> = mutableListOf()
+  override val arguments: MutableMap<String, Argument> = mutableMapOf()
+  override var permission: CommandPermission = CommandPermission.NONE
+  override var executor: IExecutorNormal<*> = asCommand.executor {
+    sender.sendMessage("No Executor Specified")
   }
 
-  fun <T> argument(name: String, type: CustomArgumentType<T>) {
-    arguments += RequiredArgumentBuilder
-      .argument<Any, T>(name, type.type)
-      .suggests { ctx, builder ->
-        type.listSuggestions(ctx, builder)
-      }
+  inline fun executor(crossinline executes: ContextCommandExecutor<CommandSender>) {
+    executor = asCommand.executor(executes)
   }
 
-  fun dynamicArgument(
-    name: String,
-    type: StringArgumentType = StringArgumentType.word(),
-    list: CommandContext<S>.() -> Iterable<String>
-  ) {
-    argument(name, DynamicArgumentType(creator, list, type))
+  inline fun playerExecutor(crossinline executes: ContextCommandExecutor<Player>) {
+    executor = asCommand.playerExecutor(executes)
   }
 
-  fun onDynamicArgument(
-    name: String,
-    type: StringArgumentType = StringArgumentType.word(),
-    list: CommandContext<S>.() -> Iterable<String>,
-    executor: CommandContext<S>.() -> Unit
-  ) {
-    onArgument(name, DynamicArgumentType(creator, list, type), executor)
+  inline fun consoleExecutor(crossinline executes: ContextCommandExecutor<ConsoleCommandSender>) {
+    executor = asCommand.consoleExecutor(executes)
   }
 
-  fun <T> onArgument(name: String, type: ArgumentType<T>, executor: CommandContext<S>.() -> Unit) {
-    arguments += RequiredArgumentBuilder
-      .argument<Any, T>(name, type)
-      .executes(creator create executor)
+  inline fun entityExecutor(crossinline executes: ContextCommandExecutor<Entity>) {
+    executor = asCommand.entityExecutor(executes)
   }
 
-  fun <T> onArgument(name: String, type: CustomArgumentType<T>, executor: CommandContext<S>.() -> Unit) {
-    arguments += RequiredArgumentBuilder
-      .argument<Any, T>(name, type.type)
-      .suggests { ctx, builder ->
-        type.listSuggestions(ctx, builder)
-      }
-      .executes(creator create executor)
+  inline fun proxyExecutor(crossinline executes: ContextCommandExecutor<ProxiedCommandSender>) {
+    executor = asCommand.proxyExecutor(executes)
   }
 
-  fun onCommand(name: String, dsl: CommandDSL<S>.() -> Unit) {
-    arguments += CommandDSL(name, creator).apply(dsl).build()
+  inline fun commandBlockExecutor(crossinline executes: ContextCommandExecutor<BlockCommandSender>) {
+    executor = asCommand.commandBlockExecutor(executes)
   }
 
-  fun executes(executor: CommandContext<S>.() -> Unit) {
-    this.executor = executor
-  }
-
-  fun build(): LiteralArgumentBuilder<Any> {
-    val required = arguments.filter { it is RequiredArgumentBuilder<*, *> }
-    val literal = arguments.filter { it is LiteralArgumentBuilder<*> }
-
-    with(required.lastOrNull() ?: builder) {
-      executes(creator create executor)
-    }
-
-    for (i in required.lastIndex - 1 downTo 0) {
-      required[i].then(required[i + 1])
-    }
-
-    required.firstOrNull()?.let {
-      builder.then(it)
-    }
-
-    literal.forEach {
-      builder.then(it)
-    }
-
-    return builder
-  }
 }
 
-inline fun <S : CommandSender> CommandManager.command(
-  name: String,
-  creator: ContextCreator<S>,
-  dsl: CommandDSL<S>.() -> Unit
-) {
-  val command = CommandDSL(name, create(creator)).apply(dsl)
-
-  register(command.build().build())
+inline fun command(name: String, dsl: CommandDSL.() -> Unit): Command {
+  return CommandDSL(name).apply(dsl)
 }
 
-inline fun <reified T> CommandContext<*>.getArgument(name: String): T = getArgument(name, T::class.java)
-inline fun <reified T> CommandContext<*>.argument(): ArgumentDelegate<T> = ArgumentDelegate(this, T::class.java)
-
-class ArgumentDelegate<T>(val context: CommandContext<*>, val type: Class<T>) {
-  operator fun getValue(ignore: Any?, property: KProperty<*>): T {
-    return context.getArgument(property.name, type)
-  }
+inline fun CommandManager.command(name: String, dsl: CommandDSL.() -> Unit) {
+  addCommand(CommandDSL(name).apply(dsl))
 }

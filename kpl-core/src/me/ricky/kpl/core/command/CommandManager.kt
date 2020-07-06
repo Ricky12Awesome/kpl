@@ -1,96 +1,118 @@
 package me.ricky.kpl.core.command
 
-import com.mojang.brigadier.LiteralMessage
-import com.mojang.brigadier.context.CommandContext
-import com.mojang.brigadier.exceptions.SimpleCommandExceptionType
-import me.lucko.commodore.Commodore
-import me.lucko.commodore.CommodoreProvider
+import dev.jorel.commandapi.CommandAPI
+import dev.jorel.commandapi.CommandAPICommand
+import dev.jorel.commandapi.CommandPermission
+import dev.jorel.commandapi.arguments.Argument
+import dev.jorel.commandapi.executors.*
 import me.ricky.kpl.core.KPlugin
-import me.ricky.kpl.core.util.*
+import me.ricky.kpl.core.util.Manager
+import org.bukkit.block.CommandBlock
+import org.bukkit.command.BlockCommandSender
 import org.bukkit.command.CommandSender
 import org.bukkit.command.ConsoleCommandSender
+import org.bukkit.command.ProxiedCommandSender
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
-import org.bukkit.plugin.Plugin
-import kotlin.reflect.KClass
-import kotlin.reflect.full.safeCast
+import kotlin.reflect.KProperty
 
-typealias CommandResponse<S> = Either<CommandContext<S>, ErrorMessage>
+typealias ContextCommandExecutor<S> = CommandContext<S>.() -> Unit
 
-typealias MinecraftCommandNode<S> = com.mojang.brigadier.tree.CommandNode<S>
-typealias MinecraftCommand<S> = com.mojang.brigadier.Command<S>
+class Arguments(args: Map<String, Any?>) : Map<String, Any?> by args {
+  override val values: List<Any?> = args.values.toList()
 
-object PlayerContextCreator : ContextCreator<Player> by genericContextCreator()
-object ConsoleContextCreator : ContextCreator<ConsoleCommandSender> by genericContextCreator()
-object CommonContextCreator : ContextCreator<CommandSender> by genericContextCreator()
+  inline infix fun <reified T> at(index: Int): T {
+    return values[index] as T
+  }
 
-inline fun <reified C : CommandContext<S>, reified S : CommandSender> genericContextCreator(): GenericContextCreator<C, S> {
-  return GenericContextCreator(S::class, C::class)
-}
-
-interface ContextCreator<S : CommandSender> {
-  fun create(commodore: Commodore, context: CommandContext<Any>): CommandResponse<S>
-}
-
-class GenericContextCreator<C : CommandContext<S>, S : CommandSender>(
-  private val senderClass: KClass<S>,
-  private val contextClass: KClass<C>
-) : ContextCreator<S> {
-  override fun create(commodore: Commodore, context: CommandContext<Any>): CommandResponse<S> {
-    val bukkitSender = commodore.getBukkitSender(context.source)
-    val sender = senderClass.safeCast(bukkitSender)
-      ?: return ErrorMessage("&e${bukkitSender::class.simpleName}&c is not typeof &e${senderClass.simpleName}").right()
-
-    val contextWithSender = context.copyFor(sender)
-
-    return contextClass.safeCast(contextWithSender)?.left()
-      ?: ErrorMessage("&e${context::class.simpleName}&c is not typeof &e${contextClass.simpleName}").right()
+  inline operator fun <reified T> getValue(any: Any?, property: KProperty<*>): T {
+    return this[property.name] as T
   }
 }
 
-data class CommodoreContextCreator<S : CommandSender>(
-  private val commodore: Commodore,
-  private val source: ContextCreator<S>
-) {
-  infix fun senderOf(context: CommandContext<Any>) = commodore.getBukkitSender(context)
-    ?: error("Couldn't get sender from context")
-
-  infix fun create(context: CommandContext<Any>): CommandResponse<S> {
-    return source.create(commodore, context)
-  }
-
-  inline fun handle(context: CommandContext<Any>, execute: CommandContext<S>.() -> Unit) {
-    when (val response = create(context)) {
-      is Either.Left -> execute(response.value)
-      is Either.Right -> throw SimpleCommandExceptionType(LiteralMessage(response.value.colored)).create()
+fun Command.argumentsFrom(args: Array<out Any?>): Arguments {
+  return Arguments(buildMap {
+    arguments.keys.forEachIndexed { index, name ->
+      this[name] = args[index]
     }
-  }
+  })
+}
 
-  infix fun create(execute: CommandContext<S>.() -> Unit): MinecraftCommand<Any> = MinecraftCommand {
-    when (val response = create(it)) {
-      is Either.Left -> execute(response.value)
-      is Either.Right -> response.value.sendTo(senderOf(it))
-    }
+inline fun Command.executor(
+  crossinline executes: ContextCommandExecutor<CommandSender>
+) = CommandExecutor { sender, args ->
+  CommandContext(sender, argumentsFrom(args)).executes()
+}
 
-    0
-  }
+inline fun Command.playerExecutor(
+  crossinline executes: ContextCommandExecutor<Player>
+) = PlayerCommandExecutor { sender, args ->
+  CommandContext(sender, argumentsFrom(args)).executes()
+}
+
+inline fun Command.consoleExecutor(
+  crossinline executes: ContextCommandExecutor<ConsoleCommandSender>
+) = ConsoleCommandExecutor { sender, args ->
+  CommandContext(sender, argumentsFrom(args)).executes()
+}
+
+inline fun Command.entityExecutor(
+  crossinline executes: ContextCommandExecutor<Entity>
+) = EntityCommandExecutor { sender, args ->
+  CommandContext(sender, argumentsFrom(args)).executes()
+}
+
+inline fun Command.proxyExecutor(
+  crossinline executes: ContextCommandExecutor<ProxiedCommandSender>
+) = ProxyCommandExecutor { sender, args ->
+  CommandContext(sender, argumentsFrom(args)).executes()
+}
+
+inline fun Command.commandBlockExecutor(
+  crossinline executes: ContextCommandExecutor<BlockCommandSender>
+) = CommandBlockCommandExecutor { sender, args ->
+  CommandContext(sender, argumentsFrom(args)).executes()
+}
+
+class CommandContext<S : CommandSender>(
+  val sender: S,
+  val arguments: Arguments
+)
+
+interface Command {
+  val name: String
+  val aliases: List<String>
+  val arguments: Map<String, Argument>
+  val permission: CommandPermission
+  val executor: IExecutorNormal<*>
 }
 
 class CommandManager : Manager {
-  private lateinit var commodore: Commodore
+  val commands = mutableListOf<CommandAPICommand>()
 
-  fun <S : CommandSender> create(creator: ContextCreator<S>) = CommodoreContextCreator(commodore, creator)
+  fun addCommand(command: Command) {
+    commands += CommandAPICommand(command.name).apply {
+      withArguments(LinkedHashMap(command.arguments))
+      withAliases(*command.aliases.toTypedArray())
+      withPermission(command.permission)
+
+      when (val executor = command.executor) {
+        is CommandExecutor -> executes(executor)
+        is PlayerCommandExecutor -> executesPlayer(executor)
+        is ConsoleCommandExecutor -> executesConsole(executor)
+        is EntityCommandExecutor -> executesEntity(executor)
+        is ProxyCommandExecutor -> executesProxy(executor)
+        is CommandBlockCommandExecutor-> executesCommandBlock(executor)
+        else -> error("Unsupported Executor, valid executors: [Player, Console, Entity, Proxy, CommandBlock]CommandExecutor")
+      }
+    }
+  }
 
   override fun enable(source: KPlugin) {
-    if (!CommodoreProvider.isSupported()) {
-      source.logger.severe("Server must be 1.13 or higher to use this plugin.")
-      return source.pluginLoader.disablePlugin(source)
+    if (CommandAPI.canRegister()) {
+      commands.forEach(CommandAPICommand::register)
+    } else {
+      source.logger.warning("Cannot register commands.")
     }
-
-    commodore = CommodoreProvider.getCommodore(source)
   }
-
-  fun register(command: MinecraftCommandNode<Any>) {
-    commodore.dispatcher.root.addChild(command)
-  }
-
 }
